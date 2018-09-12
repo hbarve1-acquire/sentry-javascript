@@ -41,6 +41,10 @@ export class Dedupe implements Integration {
     }
 
     if (this.isSameMessage(event)) {
+      if (!this.isSameFingerprint(event)) {
+        return false;
+      }
+
       logger.warn(
         `Event dropped due to being a duplicate of previous event (same message).\n  Event: ${event.event_id}`,
       );
@@ -57,13 +61,6 @@ export class Dedupe implements Integration {
     if (this.isSameStacktrace(event)) {
       logger.warn(
         `Event dropped due to being a duplicate of previous event (same stacktrace).\n  Event: ${event.event_id}`,
-      );
-      return true;
-    }
-
-    if (this.isSameFingerprint(event)) {
-      logger.warn(
-        `Event dropped due to being a duplicate of previous event (same fingerprint).\n  Event: ${event.event_id}`,
       );
       return true;
     }
@@ -158,7 +155,14 @@ export class Dedupe implements Integration {
       return false;
     }
 
-    return Boolean(event.fingerprint && this.previousEvent.fingerprint) &&
-      JSON.stringify(event.fingerprint) === JSON.stringify(this.previousEvent.fingerprint)
+    if (!event.fingerprint || !this.previousEvent.fingerprint) {
+      return false;
+    }
+
+    try {
+      return event.fingerprint.join('') === this.previousEvent.fingerprint.join('');
+    } catch (_oO) {
+      return false;
+    }
   }
 }
